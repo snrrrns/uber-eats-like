@@ -1,9 +1,9 @@
-import { Flagment } from 'react';
+import React, { Fragment } from 'react';
 
 export const Orders = () => {
   return (
-    <Flagment>
+    <Fragment>
       注文画面
-    </Flagment>
+    </Fragment>
   )
 }

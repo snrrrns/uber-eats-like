@@ -1,9 +1,9 @@
-import { Flagment } from 'react';
+import React, { Fragment } from 'react';
 
 export const Foods = () => {
   return (
-    <Flagment>
+    <Fragment>
       フード一覧
-    </Flagment>
+    </Fragment>
   )
 }
