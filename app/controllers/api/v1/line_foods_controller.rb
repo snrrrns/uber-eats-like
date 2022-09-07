@@ -1,6 +1,6 @@
 module Api
   module V1
-    class LineFoodsController < ApplicaionController
+    class LineFoodsController < ApplicationController
       before_action :set_food, only: %i[create replace]
 
       def index
@@ -20,7 +20,7 @@ module Api
       def create
         if LineFood.active.other_restaurant(@ordered_food.restaurant.id).exists?
           return render json: {
-            existing_restaurant: LineFood.other_restaurant(@oredered_food.restaurant.id).first.restaurant.name,
+            existing_restaurant: LineFood.other_restaurant(@ordered_food.restaurant.id).first.restaurant.name,
             new_restaurant: Food.find(params[:food_id]).restaurant.name,
           }, status: :not_acceptable
         end
@@ -37,7 +37,7 @@ module Api
       end
 
       def replace
-        LineFood.active.other_restaurant(@order_food.restaurant.id).each do |line_food|
+        LineFood.active.other_restaurant(@ordered_food.restaurant.id).each do |line_food|
           line_food.update_attribute(:active, false)
         end
 
