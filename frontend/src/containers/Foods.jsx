@@ -1,11 +1,11 @@
-import React, { Fragment, useEffect, useReducer, useState } from 'react';
+import React, { Fragment,  useReducer, useEffect ,useState } from 'react';
 import styled from 'styled-components';
-import { Link } from 'react-router-dom';
+import { useHistory, Link } from "react-router-dom";
 
 import { LocalMallIcon } from '../components/Icons';
 import { FoodWrapper } from '../components/FoodWrapper';
 import Skeleton from '@material-ui/lab/Skeleton';
-import { FoodOrderDialog } from '../components/FoodOrderDialog';
+import { NewOrderConfirmDialog } from '../components/NewOrderConfirmDialog';
 
 import {
   initialState as foodsInitialState,
@@ -14,10 +14,13 @@ import {
 } from '../reducers/foods';
 
 import { fetchFoods } from '../apis/foods';
+import { postLineFoods, replaceLineFoods } from '../apis/line_foods';
 
 import MainLogo from '../images/logo.png';
+import { FoodOrderDialog } from '../components/FoodOrderDialog';
 import FoodImage from '../images/food-image.jpg';
 
+import { HTTP_STATUS_CODE } from '../constants';
 import { COLORS } from '../style_constants';
 import { REQUEST_STATE } from '../constants';
 
@@ -50,33 +53,61 @@ const ItemWrapper = styled.div`
   margin: 16px;
 `;
 
-
-const submitOrder = () => {
-  console.log('登録ボタンが押された！')
-}
-
 export const Foods = ({
   match
 }) => {
-  const [foodsState, dispatch] = useReducer(foodsReducer, foodsInitialState);
   const initialState = {
     isOpenOrderDialog: false,
     selectedFood: null,
     selectedFoodCount: 1,
-  }
+    isOpenNewOrderDialog: false,
+    existingResutaurautName: '',
+    newResutaurautName: '',
+  };
   const [state, setState] = useState(initialState);
+  const [foodsState, dispatch] = useReducer(foodsReducer, foodsInitialState);
+  const history = useHistory();
+
   useEffect(() => {
     dispatch({ type: foodsActionTyps.FETCHING });
     fetchFoods(match.params.restaurantsId)
-    .then((data) =>
-      dispatch({
-        type: foodsActionTyps.FETCH_SUCCESS,
-        payload: {
-          foods: data.foods
+      .then((data) => {
+        dispatch({
+          type: foodsActionTyps.FETCH_SUCCESS,
+          payload: {
+            foods: data.foods
+          }
+        });
+      })
+  }, []);
+
+  const submitOrder = () => {
+    postLineFoods({
+      foodId: state.selectedFood.id,
+      count: state.selectedFoodCount,
+    }).then(() => history.push('/orders'))
+      .catch((e) => {
+        if (e.response.status === HTTP_STATUS_CODE.NOT_ACCEPTABLE) {
+          setState({
+            ...state,
+            isOpenOrderDialog: false,
+            isOpenNewOrderDialog: true,
+            existingResutaurautName: e.response.data.existing_restaurant,
+            newResutaurautName: e.response.data.new_restaurant,
+          })
+        } else {
+          throw e;
         }
       })
-    )
-  }, [])
+  };
+
+  const replaceOrder = () => {
+    replaceLineFoods({
+      foodId: state.selectedFood.id,
+      count: state.selectedFoodCount,
+    }).then(() => history.push('/orders'))
+  }
+
   return (
     <Fragment>
       <HeaderWrapper>
@@ -109,8 +140,8 @@ export const Foods = ({
                   onClickFoodWrapper={
                     (food) => setState({
                       ...state,
-                      isOpenOrderDialog: true,
                       selectedFood: food,
+                      isOpenOrderDialog: true,
                     })
                   }
                   imageUrl={FoodImage}
@@ -121,26 +152,36 @@ export const Foods = ({
       </FoodsList>
       {
         state.isOpenOrderDialog &&
-          <FoodOrderDialog
-            isOpen={state.isOpenOrderDialog}
-            food={state.selectedFood}
-            countNumber={state.selectedFoodCount}
-            onClickCountUp={() => setState({
-              ...state,
-              selectedFoodCount: state.selectedFoodCount + 1,
-            })}
-            onClickCountDown={() => setState({
-              ...state,
-              selectedFoodCount: state.selectedFoodCount - 1,
-            })}
-            onClickOrder={() => submitOrder()}
-            onClose={() => setState({
-              ...state,
-              isOpenOrderDialog: false,
-              selectedFood: null,
-              selectedFoodCount: 1,
-            })}
-          />
+        <FoodOrderDialog
+          isOpen={state.isOpenOrderDialog}
+          food={state.selectedFood}
+          countNumber={state.selectedFoodCount}
+          onClickCountUp={() => setState({
+            ...state,
+            selectedFoodCount: state.selectedFoodCount + 1,
+          })}
+          onClickCountDown={() => setState({
+            ...state,
+            selectedFoodCount: state.selectedFoodCount - 1,
+          })}
+          onClickOrder={() => submitOrder()}
+          onClose={() => setState({
+            ...state,
+            isOpenOrderDialog: false,
+            selectedFood: null,
+            selectedFoodCount: 1,
+          })}
+        />
+      }
+      {
+        state.isOpenNewOrderDialog &&
+        <NewOrderConfirmDialog
+          isOpen={state.isOpenNewOrderDialog}
+          onClose={() => setState({ ...state, isOpenNewOrderDialog: false })}
+          existingResutaurautName={state.existingResutaurautName}
+          newResutaurautName={state.newResutaurautName}
+          onClickSubmit={() => replaceOrder()}
+        />
       }
     </Fragment>
   )
